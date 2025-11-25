@@ -2,8 +2,7 @@ package com.example.simple_api.models;
 
 public class Task {
 
-
-    private long id;
+    private long id = 0;
     private String title;
     private String description;
     private String status;

@@ -7,5 +7,6 @@ public interface TaskRepository {
     List<Task> getTasks() throws Exception;
     Task getTaskById(long id) throws Exception;
     Task saveTask(Task task) throws Exception;
+    Task updateTask(Task task, long id) throws Exception;
     void deleteTaskById(long id) throws Exception;
 }

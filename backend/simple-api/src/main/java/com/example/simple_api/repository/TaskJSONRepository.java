@@ -2,10 +2,13 @@ package com.example.simple_api.repository;
 
 import com.example.simple_api.models.Task;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import org.apache.tomcat.util.json.JSONParser;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -22,14 +25,23 @@ public class TaskJSONRepository implements TaskRepository {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
+    private List<Task> tasks;
 
-    public List<Task> readJSON() {
-        try{
-            if(Files.notExists(file)) return new ArrayList<>();
-            return Arrays.asList(mapper.readValue(file.toFile(), Task[].class));
-        } catch(Exception e){
-            throw new RuntimeException(e);
+    public TaskJSONRepository() throws IOException {
+        load();
+    }
+
+    private void load() throws IOException {
+        if (Files.notExists(file)) {
+            tasks = new ArrayList<>();
+            save();
+        } else {
+            tasks = new ArrayList<>(Arrays.asList(mapper.readValue(file.toFile(), Task[].class)));
         }
+    }
+
+    private void save() throws IOException {
+        mapper.writerWithDefaultPrettyPrinter().writeValue(new File(file.toUri()), tasks);
     }
 
     public Task findTaskById(long id, List<Task> tasks) throws Exception{
@@ -45,29 +57,47 @@ public class TaskJSONRepository implements TaskRepository {
 
     @Override
     public List<Task> getTasks() throws Exception {
-        return this.readJSON();
+        return tasks;
     }
 
     @Override
     public Task getTaskById(long id) throws Exception {
-        return this.findTaskById(id, this.readJSON());
+        return tasks.stream().filter(t -> t.getId() == id).findFirst().orElse(null);
     }
 
     @Override
     public Task saveTask(Task task) throws Exception {
-        List<Task> tasks = getTasks();
-        tasks.add(task);
-
         try{
-            mapper.writeValue(file.toFile(), tasks);
-        } catch(Exception e) {
-            throw new RuntimeException(e);
+            long nextId = tasks.stream().mapToLong(Task::getId).max().orElse(0) + 1;
+            task.setId(nextId);
+            tasks.add(task);
+            save();
+        } catch (RuntimeException e) {
+           throw new RuntimeException(e);
         }
         return task;
     }
 
     @Override
-    public void deleteTaskById(long id) throws Exception {
+    public Task updateTask(Task updated, long id) throws Exception {
+        try{
+            Task current = getTaskById(id);
+            if(current == null) return null;
 
+            current.setDescription(updated.getDescription());
+            current.setStatus(updated.getStatus());
+            current.setTitle(updated.getTitle());
+
+            save();
+        } catch (RuntimeException e) {
+            throw new RuntimeException(e);
+        }
+        return updated;
+    }
+
+    @Override
+    public void deleteTaskById(long id) throws Exception {
+        boolean removed = tasks.removeIf(t -> t.getId() == id);
+        if (removed) save();
     }
 }
