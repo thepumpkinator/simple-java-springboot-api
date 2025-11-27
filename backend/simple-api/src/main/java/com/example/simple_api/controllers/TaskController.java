@@ -14,6 +14,7 @@ import java.util.List;
 
 import com.example.simple_api.models.Task;
 
+@CrossOrigin(origins = "http://localhost:5173")
 @RestController("/")
 @RequestMapping()
 public class TaskController {
